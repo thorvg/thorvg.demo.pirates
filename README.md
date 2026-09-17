@@ -6,7 +6,7 @@
 # Thor Pirates
 
 <p align="center">
-  <img width="800" height="auto" alt="image" src="https://github.com/user-attachments/assets/483bf108-6519-479e-ae59-199227adc56c" />
+  <img width="800" height="auto" alt="image" src="https://github.com/user-attachments/assets/f9d0de55-5144-4a84-950e-017ce2c441f4" />
 </p>
 
 **"Rule the Seas, One Cannonball at a Time!"**
