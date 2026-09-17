@@ -6,7 +6,7 @@
 # Thor Pirates
 
 <p align="center">
-  <img width="600" height="auto" src="https://github.com/thorvg/thorvg.janitor/blob/main/title.png">
+  <img width="800" height="auto" alt="image" src="https://github.com/user-attachments/assets/483bf108-6519-479e-ae59-199227adc56c" />
 </p>
 
 **"Rule the Seas, One Cannonball at a Time!"**
@@ -20,14 +20,10 @@ Sink enemy ships, dominate the battlefield, and prove yourself as the true ruler
 <br />
 Powered entirely by ThorVG, this demo showcases real-time vector rendering, animation, and interactive gameplay on the high seas.<br />
 
-<p align="center">
-  <img width="800" height="auto" src="https://github.com/user-attachments/assets/8a4bd16a-bb72-4b41-b007-eadc2220d1eb"/>
-</p>
-
 ## Build & Run
 Install Meson, Ninja, pkg-config, and a C++17 compiler, then install [ThorVG](https://github.com/thorvg/thorvg) and [ThorVG Toolkit](https://github.com/thorvg/thorvg.toolkit). The recommended ThorVG build option is
 ```
--Dloaders="svg,ttf,jpg"
+-Dloaders="ttf"
 ```
 Ensure `thorvg-toolkit` and `thorvg-1` are discoverable by pkg-config. Build and run from the repository root so relative asset paths resolve correctly:
 ```
@@ -46,11 +42,12 @@ GPU backends require the corresponding support in your ThorVG and ThorVG Toolkit
 
 ## Features
 
-- Designed as a demo game to showcase the real-time rendering capabilities of the ThorVG engine.
-- Built entirely on ThorVG with no external graphics or game engine dependencies. All visuals are rendered as real-time vector graphics.
+- Demonstrates how well ThorVG lends itself to AI code generation through a complete, interactive demo game.
+- All source code was generated using Codex (GPT-5.6 Sol), from rendering and physics to gameplay and environmental effects.
+- Built entirely on ThorVG, with no external graphics or game engine dependencies. All visuals are rendered as vector graphics in real time.
 - Features physics-based gameplay, including ballistic cannon trajectories, ship debris, dynamic water movement, and interactive environmental effects.
-- The entire source code was generated with AI (Codex, GPT-5.6 Sol), demonstrating how quickly a complete interactive game can be built on top of ThorVG.
 
 ## Authors
 
 * **[Hermet Park](https://github.com/hermet)**
+* **Codex (GPT-5.6 Sol)** — AI generation of all source code.
