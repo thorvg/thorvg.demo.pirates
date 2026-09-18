@@ -33,7 +33,7 @@ using namespace std;
 using namespace tvg;
 using namespace tvg::toolkit;
 
-struct ThorPirate : tvg::toolkit::App
+struct ThorPirates : tvg::toolkit::App
 {
     static constexpr float worldLeft = -0.125f;
     static constexpr float worldRight = 1.125f;
@@ -41,6 +41,8 @@ struct ThorPirate : tvg::toolkit::App
     static constexpr float playerRight = 1.05f;
     static constexpr float distantSeaLevel = 0.73f - (0.73f - 2.0f / 3.0f) * 0.30f;
     static constexpr float shipWaterline = 152.0f;
+    static bool GPU;
+
     Scene* screen = nullptr;
     float screenShakeTime = 0.0f;
     Scene* world = nullptr;
@@ -168,6 +170,8 @@ struct ThorPirate : tvg::toolkit::App
     Shape* sunReflections[4] = {};
     void updateSunReflections(float time)
     {
+        if (!GPU) return;
+
         const float width = static_cast<float>(size().w);
         const float height = static_cast<float>(size().h);
         for (unsigned layer = 1; layer < 4; ++layer) {
@@ -266,7 +270,7 @@ struct ThorPirate : tvg::toolkit::App
         auto reflection = Scene::gen();
         reflection->add(shape);
         reflection->blend(BlendMethod::SoftLight);
-        reflection->add(SceneEffect::GaussianBlur, 1.5, 0, 0, 20);
+        if (GPU) reflection->add(SceneEffect::GaussianBlur, 1.5, 0, 0, 20);
         return reflection;
     }
     struct Impact
@@ -944,7 +948,7 @@ struct ThorPirate : tvg::toolkit::App
         mast->strokeWidth(5.0f);
         if (vessel.enemy) mast->strokeFill(color.r * 0.8f, color.g * 0.8f, color.b * 0.8f);
         else mast->strokeFill(75, 48, 55);
-        if (rig->add(mast) != Result::Success) return false;
+        rig->add(mast);
         auto mastLight = Shape::gen();
         mastLight->moveTo(85.8f, 131.0f);
         mastLight->lineTo(85.8f, 3.0f);
@@ -954,7 +958,7 @@ struct ThorPirate : tvg::toolkit::App
         mastLight->lineTo(131.0f, 99.8f);
         mastLight->strokeWidth(1.2f);
         mastLight->strokeFill(255, 180, 120, 125);
-        if (rig->add(mastLight) != Result::Success) return false;
+        rig->add(mastLight);
         sail = Shape::gen();
         auto fabric = LinearGradient::gen();
         fabric->linear(48.0f, 52.0f, 130.0f, 96.0f);
@@ -976,44 +980,44 @@ struct ThorPirate : tvg::toolkit::App
         }
         fabric->colorStops(vessel.enemy ? enemyStops : creamStops, 5);
         sail->fill(fabric);
-        if (rig->add(sail) != Result::Success) return false;
+        rig->add(sail);
         vessel.sailFolds = Shape::gen();
         vessel.sailFolds->fill(0, 0, 0, 0);
         vessel.sailFolds->strokeWidth(1.5f);
         if (vessel.enemy) vessel.sailFolds->strokeFill(color.r * 0.3f, color.g * 0.3f, color.b * 0.3f, 90);
         else vessel.sailFolds->strokeFill(65, 30, 40, 75);
-        if (rig->add(vessel.sailFolds) != Result::Success) return false;
+        rig->add(vessel.sailFolds);
         vessel.sailHighlights = Shape::gen();
         vessel.sailHighlights->fill(0, 0, 0, 0);
         vessel.sailHighlights->strokeWidth(0.9f);
         vessel.sailHighlights->strokeFill(255, 232, 180, 100);
-        if (rig->add(vessel.sailHighlights) != Result::Success) return false;
+        rig->add(vessel.sailHighlights);
         flag = Shape::gen();
         flag->fill(48, 39, 51);
-        if (rig->add(flag) != Result::Success) return false;
+        rig->add(flag);
         static constexpr char skull[] = R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="180" height="170">
 <path d="M96 7 L108 12 M96 12 L108 7" stroke="#fff0d2" stroke-width="2"/>
 <circle cx="102" cy="7" r="3.5" fill="#fff0d2"/>
 <circle cx="101" cy="6.5" r="0.8" fill="#302733"/><circle cx="104" cy="6.5" r="0.8" fill="#302733"/>
 </svg>)svg";
         emblem = Picture::gen();
-        if (emblem->load(skull, sizeof(skull) - 1, "svg") != Result::Success) return false;
-        if (rig->add(emblem) != Result::Success) return false;
-        if (ship->add(rig) != Result::Success) return false;
+        emblem->load(skull, sizeof(skull) - 1, "svg");
+        rig->add(emblem);
+        ship->add(rig);
         auto hull = Picture::gen();
-        if (hull->load(pirateShip, sizeof(pirateShip) - 1, "svg") != Result::Success) return false;
-        if (ship->add(hull) != Result::Success) return false;
+        hull->load(pirateShip, sizeof(pirateShip) - 1, "svg");
+        ship->add(hull);
         if (vessel.enemy) {
             vessel.cannon = Shape::gen();
             vessel.cannon->moveTo(138.0f, 127.0f);
             vessel.cannon->lineTo(161.0f, 111.0f);
             vessel.cannon->strokeWidth(9.0f);
             vessel.cannon->strokeFill(45, 43, 55);
-            if (ship->add(vessel.cannon) != Result::Success) return false;
+            ship->add(vessel.cannon);
             vessel.nextAttack = randomRange(1.0f, 3.0f);
         }
         vessel.fire = Scene::gen();
-        if (vessel.fire->blend(BlendMethod::Add) != Result::Success) return false;
+        vessel.fire->blend(BlendMethod::Add);
         for (unsigned i = 0; i < 7; ++i) {
             auto outer = Shape::gen();
             auto glow = LinearGradient::gen();
@@ -1026,15 +1030,15 @@ struct ThorPirate : tvg::toolkit::App
             glow->colorStops(colors, 3);
             outer->fill(glow);
             vessel.flames[i] = outer;
-            if (vessel.fire->add(outer) != Result::Success) return false;
+            vessel.fire->add(outer);
             auto core = Shape::gen();
             core->fill(255, 235, 145, 235);
             vessel.flameCores[i] = core;
-            if (vessel.fire->add(core) != Result::Success) return false;
+            vessel.fire->add(core);
         }
         vessel.fire->opacity(0);
-        if (ship->add(vessel.fire) != Result::Success) return false;
-        if (fleet->add(ship) != Result::Success) return false;
+        ship->add(vessel.fire);
+        fleet->add(ship);
         return true;
     }
 
@@ -1207,7 +1211,7 @@ struct ThorPirate : tvg::toolkit::App
     bool movingLeft = false;
     bool movingRight = false;
 
-    ThorPirate(const string& title, const Size& size) : App(title, size, true) {}
+    ThorPirates(const string& title, const Size& size) : App(title, size, true) {}
 
     void waves(const Size& size, float time)
     {
@@ -1372,9 +1376,9 @@ struct ThorPirate : tvg::toolkit::App
     bool content(tvg::Canvas* canvas, const Size& size) override
     {
         screen = Scene::gen();
-        if (canvas->add(screen) != Result::Success) return false;
+        canvas->add(screen);
         world = Scene::gen();
-        if (screen->add(world) != Result::Success) return false;
+        screen->add(world);
         auto background = Shape::gen();
         background->appendRect(size.w * worldLeft, size.h * worldLeft, size.w * 1.25f, size.h * 1.25f);
         auto sky = LinearGradient::gen();
@@ -1387,7 +1391,7 @@ struct ThorPirate : tvg::toolkit::App
         };
         sky->colorStops(skyStops, 4);
         background->fill(sky);
-        if (world->add(background) != Result::Success) return false;
+        world->add(background);
 
         for (auto& star : stars) {
             const float x = size.w * randomRange(0.025f, 0.975f);
@@ -1399,7 +1403,7 @@ struct ThorPirate : tvg::toolkit::App
             star.phase = randomRange(0.0f, 6.283185307f);
             star.speed = randomRange(0.8f, 2.2f);
             star.brightness = randomRange(170.0f, 245.0f) * (1.0f - altitude * 2.0f);
-            if (world->add(star.shape) != Result::Success) return false;
+            world->add(star.shape);
         }
         twinkle(0.0f);
 
@@ -1417,8 +1421,8 @@ struct ThorPirate : tvg::toolkit::App
         sunlight->colorStops(sunStops, 3);
         sun->fill(sunlight);
         auto blurredSun = Scene::gen();
-        if (blurredSun->add(sun) != Result::Success) return false;
-        if (blurredSun->add(SceneEffect::GaussianBlur, 5.0, 0, 0, 20) != Result::Success) return false;
+        blurredSun->add(sun);
+        if (GPU)  blurredSun->add(SceneEffect::GaussianBlur, 5.0, 0, 0, 20);
 
         auto visibleSun = Scene::gen();
         const float glowRadius = radius * 2.5f;
@@ -1435,12 +1439,12 @@ struct ThorPirate : tvg::toolkit::App
         };
         glow->colorStops(glowStops, 5);
         sunGlow->fill(glow);
-        if (visibleSun->add(sunGlow) != Result::Success) return false;
-        if (visibleSun->add(blurredSun) != Result::Success) return false;
+        visibleSun->add(sunGlow);
+        visibleSun->add(blurredSun);
         sunClip = Shape::gen();
         sunClip->fill(255, 255, 255);
         visibleSun->clip(sunClip);
-        if (world->add(visibleSun) != Result::Success) return false;
+        world->add(visibleSun);
 
         // Static vector brush strokes and coastal silhouettes are built only once.
         auto scenery = Scene::gen();
@@ -1461,7 +1465,7 @@ struct ThorPirate : tvg::toolkit::App
                 x + length * .3f, y + thickness * .7f, x, y);
             streak->close();
             streak->fill(255, 153, 65, static_cast<uint8_t>(75 + i % 4 * 20));
-            if (scenery->add(streak) != Result::Success) return false;
+            scenery->add(streak);
         }
         for (unsigned depth = 0; depth < 3; ++depth) {
             auto ridge = Shape::gen();
@@ -1479,9 +1483,9 @@ struct ThorPirate : tvg::toolkit::App
             ridge->close();
             const uint8_t colors[3][3] = {{185, 99, 104}, {132, 78, 106}, {85, 63, 94}};
             ridge->fill(colors[depth][0], colors[depth][1], colors[depth][2]);
-            if (scenery->add(ridge) != Result::Success) return false;
+            scenery->add(ridge);
         }
-        if (world->add(scenery) != Result::Success) return false;
+        world->add(scenery);
 
         for (auto& cloud : clouds) {
             constexpr float h = 100.0f;
@@ -1498,15 +1502,15 @@ struct ThorPirate : tvg::toolkit::App
             tint->colorStops(cloudStops, 3);
             shape->fill(tint);
             cloud.scene = Scene::gen();
-            if (cloud.scene->add(shape) != Result::Success) return false;
+            cloud.scene->add(shape);
             spawnCloud(cloud, size, true);
-            if (world->add(cloud.scene) != Result::Success) return false;
+            world->add(cloud.scene);
         }
 
         crateLayer = Scene::gen();
-        if (world->add(crateLayer) != Result::Success) return false;
+        world->add(crateLayer);
         fleet = Scene::gen();
-        if (world->add(fleet) != Result::Success) return false;
+        world->add(fleet);
         for (auto& vessel : vessels) {
             if (!createVessel(vessel)) return false;
         }
@@ -1515,10 +1519,10 @@ struct ThorPirate : tvg::toolkit::App
         aimCannon();
         cannon->strokeWidth(9.0f);
         cannon->strokeFill(45, 43, 55);
-        if (vessels[0].ship->add(cannon) != Result::Success) return false;
+        vessels[0].ship->add(cannon);
         aimGuide = Shape::gen();
         aimGuide->fill(255, 255, 255);
-        if (world->add(aimGuide) != Result::Success) return false;
+        world->add(aimGuide);
         for (auto& ball : cannonballs) {
             ball.shape = Shape::gen();
             const float radius = size.h * 0.0105f * 0.8f;
@@ -1535,7 +1539,7 @@ struct ThorPirate : tvg::toolkit::App
             ball.speedGradient->colorStops(speedStops, 3);
             ball.speedLines->strokeFill(ball.speedGradient);
             ball.speedLines->opacity(0);
-            if (world->add(ball.speedLines) != Result::Success) return false;
+            world->add(ball.speedLines);
             ball.shape->appendCircle(0.0f, 0.0f, radius, radius);
             auto metal = RadialGradient::gen();
             metal->radial(radius * 0.45f, 0.0f, radius * 1.5f, radius * 0.45f, 0.0f, 0.0f);
@@ -1550,7 +1554,7 @@ struct ThorPirate : tvg::toolkit::App
             metal->colorStops(metalStops, 6);
             ball.shape->fill(metal);
             ball.shape->opacity(0);
-            if (world->add(ball.shape) != Result::Success) return false;
+            world->add(ball.shape);
         }
 
         sea = Shape::gen();
@@ -1563,7 +1567,7 @@ struct ThorPirate : tvg::toolkit::App
         };
         gradient->colorStops(stops, 2);
         sea->fill(gradient);
-        if (world->add(sea, crateLayer) != Result::Success) return false;
+        world->add(sea, crateLayer);
 
         for (auto& layer : seaLayers) {
             layer.shape = Shape::gen();
@@ -1583,28 +1587,27 @@ struct ThorPirate : tvg::toolkit::App
             };
             depth->colorStops(depthStops, 4);
             layer.shape->fill(depth);
-            if (world->add(layer.shape) != Result::Success) return false;
-            auto reflection = createSunReflection(size, 1 + (&layer - seaLayers));
-           if (world->add(reflection) != Result::Success) return false;
+            world->add(layer.shape);
+            world->add(createSunReflection(size, 1 + (&layer - seaLayers)));
         }
 
         reflectionLayer = Scene::gen();
         reflectionClip = Shape::gen();
-        if (reflectionLayer->clip(reflectionClip) != Result::Success) return false;
-        if (reflectionLayer->blend(BlendMethod::Multiply) != Result::Success) return false;
-        if (world->add(reflectionLayer) != Result::Success) return false;
+        reflectionLayer->clip(reflectionClip);
+        reflectionLayer->blend(BlendMethod::Multiply);
+        world->add(reflectionLayer);
 
         for (auto& drop : droplets) {
             drop.shape = Shape::gen();
             drop.shape->fill(255, 255, 255);
             drop.shape->opacity(0);
-            if (world->add(drop.shape) != Result::Success) return false;
+            world->add(drop.shape);
         }
 
         for (auto& piece : debris) {
             piece.shape = Shape::gen();
             piece.shape->opacity(0);
-            if (world->add(piece.shape) != Result::Success) return false;
+            world->add(piece.shape);
         }
 
         chargeGauge = Scene::gen();
@@ -1613,71 +1616,64 @@ struct ThorPirate : tvg::toolkit::App
         gaugeBackground->fill(30, 25, 45, 230);
         gaugeBackground->strokeWidth(1.0f);
         gaugeBackground->strokeFill(255, 220, 170, 220);
-        if (chargeGauge->add(gaugeBackground) != Result::Success) return false;
+        chargeGauge->add(gaugeBackground);
         chargeFill = Shape::gen();
-        if (chargeGauge->add(chargeFill) != Result::Success) return false;
+        chargeGauge->add(chargeFill);
         chargeGauge->opacity(0);
-        if (world->add(chargeGauge) != Result::Success) return false;
+        world->add(chargeGauge);
 
         if (!fontLoaded) {
-            if (Text::load(FONT_NAME, reinterpret_cast<const char*>(FONT_DATA), sizeof(FONT_DATA), "ttf") != Result::Success) return false;
+            Text::load(FONT_NAME, reinterpret_cast<const char*>(FONT_DATA), sizeof(FONT_DATA), "ttf");
             fontLoaded = true;
         }
         for (auto& popup : scorePopups) {
             popup.text = Text::gen();
-            if (popup.text->font(FONT_NAME) != Result::Success) return false;
+            popup.text->font(FONT_NAME);
             popup.text->align(0.5f, 1.0f);
             popup.text->opacity(0);
-            if (world->add(popup.text) != Result::Success) return false;
+            world->add(popup.text);
         }
-        auto titleText = Text::gen();
-        if (titleText->font(FONT_NAME) != Result::Success) return false;
-        titleText->size(24.0f);
-        titleText->text("ThorVG Pirates");
-        titleText->fill(255, 240, 215);
-        titleText->translate(16.0f, 16.0f);
-        if (screen->add(titleText) != Result::Success) return false;
         scoreText = Text::gen();
-        if (scoreText->font(FONT_NAME) != Result::Success) return false;
+        scoreText->font(FONT_NAME);
         scoreText->size(18.0f);
         scoreText->align(0.5f, 0.0f);
         scoreText->fill(255, 240, 215);
         scoreText->translate(size.w * 0.5f, 16.0f);
         addScore(0);
-        if (screen->add(scoreText) != Result::Success) return false;
+        screen->add(scoreText);
 
         auto keyGuide = Text::gen();
-        if (keyGuide->font(FONT_NAME) != Result::Success) return false;
+        keyGuide->font(FONT_NAME);
         keyGuide->size(14.0f);
         keyGuide->text("LEFT / RIGHT: Move ship\nUP / DOWN: Adjust cannon angle\nSPACE: Hold to charge, release to fire");
         keyGuide->fill(255, 240, 215);
         keyGuide->align(1.0f, 1.0f);
         keyGuide->translate(static_cast<float>(size.w) - 20.0f, static_cast<float>(size.h) - 20.0f);
-        if (screen->add(keyGuide) != Result::Success) return false;
+        screen->add(keyGuide);
 
         gameOver = Scene::gen();
         auto shade = Shape::gen();
         shade->appendRect(0, 0, size.w, size.h);
         shade->fill(12, 10, 24, 125);
-        if (gameOver->add(shade) != Result::Success) return false;
+        gameOver->add(shade);
         auto title = Text::gen();
-        if (title->font(FONT_NAME) != Result::Success) return false;
+        title->font(FONT_NAME);
         title->size(size.h * 0.065f);
         title->text("Game Over");
         title->fill(255, 235, 207);
         title->align(0.5f, 0.5f);
         title->translate(size.w * 0.5f, size.h * 0.5f);
-        if (gameOver->add(title) != Result::Success) return false;
+        gameOver->add(title);
         auto hint = Text::gen();
-        if (hint->font(FONT_NAME) != Result::Success) return false;
+        hint->font(FONT_NAME);
         hint->size(size.h * 0.018f);
         hint->text("Press SPACE to restart");
         hint->fill(255, 235, 207);
         hint->align(0.5f, 0.5f);
         hint->translate(size.w * 0.5f, size.h * 0.58f);
-        if (gameOver->add(hint) != Result::Success) return false;
+        gameOver->add(hint);
         gameOver->opacity(0);
-        if (screen->add(gameOver) != Result::Success) return false;
+        screen->add(gameOver);
 
         waves(size, 0.0f);
         updateSunReflections(0.0f);
@@ -1690,7 +1686,7 @@ struct ThorPirate : tvg::toolkit::App
     bool resetGame(tvg::Canvas* canvas)
     {
         canvas->sync();
-        if (canvas->remove() != Result::Success) return false;
+        canvas->remove();
         vessels = {{0.75f, false, 0.0f},
             {0.12f, true, 0.8f, 0.12f, 0.03f, 0.65f},
             {0.25f, true, 1.6f, 0.25f, 0.025f, -0.50f},
@@ -1828,6 +1824,8 @@ struct ThorPirate : tvg::toolkit::App
     }
 };
 
+bool ThorPirates::GPU = true;
+
 RenderEngine options(int argc, char **argv, string& title)
 {
     // -e <engine>
@@ -1835,6 +1833,7 @@ RenderEngine options(int argc, char **argv, string& title)
         if (strcmp(argv[i], "-e") == 0) {
             if (strcmp(argv[i + 1], "sw") == 0) {
                 title = "ThorVG Pirate (CPU)";
+                ThorPirates::GPU = false;
                 return RenderEngine::CPU;
             }
             if (strcmp(argv[i + 1], "gl") == 0) {
@@ -1858,7 +1857,7 @@ int main(int argc, char** argv)
     auto engine = options(argc, argv, title);
 
     Initializer::init(4);
-    toolkit::run(new ThorPirate(title, {1920, 1280}), engine);
+    toolkit::run(new ThorPirates(title, {1600, 1024}), engine);
     Initializer::term();
 
     return 0;

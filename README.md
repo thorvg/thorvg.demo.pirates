@@ -23,20 +23,20 @@ Powered entirely by ThorVG, this demo showcases real-time vector rendering, anim
 ## Build & Run
 Install Meson, Ninja, pkg-config, and a C++17 compiler, then install [ThorVG](https://github.com/thorvg/thorvg) and [ThorVG Toolkit](https://github.com/thorvg/thorvg.toolkit). The recommended ThorVG build option is
 ```
--Dloaders="ttf" -Dengines=gl (or wg)
+-Dloaders="ttf, svg" -Dengines=gl (or wg)
 ```
 Ensure `thorvg-toolkit` and `thorvg-1` are discoverable by pkg-config. Build and run from the repository root so relative asset paths resolve correctly:
 ```
 $ meson setup build
 $ ninja -C build
-$ ./build/thorvg-janitor
+$ ./build/thorvg-piriates
 ```
 
-Select the rendering backend with `-e <engine>`. The default is `gl` (OpenGL rendering):
+Select the rendering backend with `-e <engine>`. The default is `gl`:
 ```sh
-$ ./build/thorvg-pirates -e sw  # CPU (Software)
 $ ./build/thorvg-pirates -e gl  # OpenGL
 $ ./build/thorvg-pirates -e wg  # WebGPU
+$ ./build/thorvg-pirates -e sw  # CPU (Software)
 ```
 GPU backends require the corresponding support in your ThorVG and ThorVG Toolkit builds.
 
@@ -50,4 +50,4 @@ GPU backends require the corresponding support in your ThorVG and ThorVG Toolkit
 ## Authors
 
 * **[Hermet Park](https://github.com/hermet)**
-* **Codex (GPT-5.6 Sol)** — AI generation of all source code.
+* **Codex (GPT-5.6 Sol)**
