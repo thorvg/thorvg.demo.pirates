@@ -23,7 +23,7 @@ Powered entirely by ThorVG, this demo showcases real-time vector rendering, anim
 ## Build & Run
 Install Meson, Ninja, pkg-config, and a C++17 compiler, then install [ThorVG](https://github.com/thorvg/thorvg) and [ThorVG Toolkit](https://github.com/thorvg/thorvg.toolkit). The recommended ThorVG build option is
 ```
--Dloaders="ttf"
+-Dloaders="ttf" -Dengines=gl (or wg)
 ```
 Ensure `thorvg-toolkit` and `thorvg-1` are discoverable by pkg-config. Build and run from the repository root so relative asset paths resolve correctly:
 ```
