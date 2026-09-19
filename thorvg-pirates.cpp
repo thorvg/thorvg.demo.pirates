@@ -116,7 +116,7 @@ struct ThorPirates : tvg::toolkit::App
     ScorePopup scorePopups[24];
     unsigned nextScorePopup = 0;
 
-    void showScorePopup(unsigned points, float x, float y, float time)
+    Text* createFloatingLabel(float x, float y, float time)
     {
         auto& popup = scorePopups[nextScorePopup];
         nextScorePopup = (nextScorePopup + 1) % 24;
@@ -124,11 +124,17 @@ struct ThorPirates : tvg::toolkit::App
         popup.y = y - size().h * 0.02f;
         popup.birth = time;
         popup.active = true;
-        popup.text->text(points == 100 ? "+100" : "+30");
-        popup.text->size(points == 100 ? 25.0f : 20.0f);
-        popup.text->fill(255, points == 100 ? 208 : 239, points == 100 ? 110 : 205);
         popup.text->translate(popup.x, popup.y);
         popup.text->opacity(255);
+        return popup.text;
+    }
+
+    void showScorePopup(unsigned points, float x, float y, float time)
+    {
+        auto text = createFloatingLabel(x, y, time);
+        text->text(points == 100 ? "+100" : "+30");
+        text->size(points == 100 ? 25.0f : 20.0f);
+        text->fill(255, points == 100 ? 208 : 239, points == 100 ? 110 : 205);
     }
 
     void updateScorePopups(float time)
@@ -166,6 +172,8 @@ struct ThorPirates : tvg::toolkit::App
     static constexpr float sunRadiusRatio = 0.09f;
     Shape* sun = nullptr;
     Shape* sunGlow = nullptr;
+    LinearGradient* sunlight = nullptr;
+    RadialGradient* sunGlowGradient = nullptr;
     Shape* sunClip = nullptr;
     Shape* sunReflections[4] = {};
     void updateSunReflections(float time)
@@ -299,9 +307,9 @@ struct ThorPirates : tvg::toolkit::App
     Debris debris[256];
     unsigned nextDebris = 0;
 
-    void shatter(float x, float y, float time)
+    void shatter(float x, float y, float time, unsigned count = 32)
     {
-        for (unsigned i = 0; i < 32; ++i) {
+        for (unsigned i = 0; i < count; ++i) {
             auto& piece = debris[nextDebris];
             nextDebris = (nextDebris + 1) % 256;
             piece.x = x;
@@ -522,6 +530,7 @@ struct ThorPirates : tvg::toolkit::App
     bool charging = false;
     Scene* chargeGauge = nullptr;
     Shape* chargeFill = nullptr;
+    Text* reloadLabel = nullptr;
     std::chrono::steady_clock::time_point chargeStart;
     std::chrono::steady_clock::time_point reloadReady{};
 
@@ -583,6 +592,7 @@ struct ThorPirates : tvg::toolkit::App
         }
         const auto now = std::chrono::steady_clock::now();
         const bool reloading = now < reloadReady;
+        reloadLabel->opacity(reloading ? 255 : 0);
         chargeGauge->opacity((charging || reloading) ? 255 : 0);
         if (!charging && !reloading) return;
         const float seconds = std::chrono::duration<float>(now - chargeStart).count();
@@ -663,6 +673,8 @@ struct ThorPirates : tvg::toolkit::App
         auto& ball = cannonballs[nextCannonball];
         nextCannonball = (nextCannonball + 1) % 32;
         playerLaunch(charge, ball);
+        vessels[0].recoilStart = lastFrame * 0.001f;
+        vessels[0].recoilDirection = ball.vx < 0.0f ? 1.0f : -1.0f;
         ball.active = true;
         randomizeSpeedLines(ball);
         ball.enemyShot = false;
@@ -716,7 +728,8 @@ struct ThorPirates : tvg::toolkit::App
                 }
                 updateFlames(target, time);
                 shatter(previousX + (ball.x - previousX) * hitTime,
-                    previousY + (ball.y - previousY) * hitTime, time);
+                    previousY + (ball.y - previousY) * hitTime, time,
+                    target.enemy && target.health == 0 ? 160 : 32);
                 ball.active = false;
                 ball.shape->opacity(0);
                 ball.speedLines->opacity(0);
@@ -772,6 +785,8 @@ struct ThorPirates : tvg::toolkit::App
         unsigned flameCount = 0;
         Paint* reflection = nullptr;
         float reflectionTime = -1.0f;
+        float recoilStart = -10.0f, recoilDirection = 1.0f;
+        float waterAngle = 0.0f, waterAngleTime = -1.0f;
     };
 
     void updateFlames(Vessel& vessel, float time)
@@ -892,6 +907,14 @@ struct ThorPirates : tvg::toolkit::App
                 const float travel = std::min(std::abs(distance), 0.045f * dt);
                 crate.position += std::copysign(travel, distance);
                 if (std::abs(player.position - crate.position) < 0.05f) {
+                    if (player.health < 7) {
+                        const auto& m = player.ship->transform();
+                        auto label = createFloatingLabel(m.e11 * 90.0f + m.e13,
+                            m.e21 * 90.0f + m.e23, time);
+                        label->text("+1 HP");
+                        label->size(18.0f);
+                        label->fill(255, 255, 195);
+                    }
                     player.health = std::min(player.health + 1, 7);
                     if (player.flameCount > 0) {
                         --player.flameCount;
@@ -1122,6 +1145,8 @@ struct ThorPirates : tvg::toolkit::App
             ball.sinkTime = 0.0f;
             positionCannonball(ball);
             ball.shape->opacity(255);
+            vessel.recoilStart = time;
+            vessel.recoilDirection = vx < 0.0f ? 1.0f : -1.0f;
             vessel.attackCharging = false;
             vessel.nextAttack = time + 3.0f;
         }
@@ -1275,12 +1300,17 @@ struct ThorPirates : tvg::toolkit::App
         sunClip->lineTo(left, size.h * worldLeft);
         sunClip->close();
 
-        // Refresh the sun geometry so the renderer also updates its animated clip.
-        const float radius = size.h * sunRadiusRatio;
+        // Reuse the sun paints while pulsing from the original size to 1.25 times it.
+        const float pulse = 0.5f - 0.5f * std::cos(time * 1.047197551f);
+        const float radius = size.h * sunRadiusRatio * (1.0f + 0.25f * pulse);
+        sunlight->linear(0.0f, baseline - radius, 0.0f, baseline + radius);
+        const float haloRadius = radius * (2.5f + 0.50f * pulse);
+        sunGlowGradient->radial(size.w * 0.5f, baseline, haloRadius, size.w * 0.5f, baseline, 0.0f);
+        sunGlow->opacity(static_cast<uint8_t>(155 + 100 * pulse));
         sun->reset();
         sun->appendCircle(size.w * 0.5f, baseline, radius, radius);
         sunGlow->reset();
-        sunGlow->appendCircle(size.w * 0.5f, baseline, radius * 2.5f, radius * 2.5f);
+        sunGlow->appendCircle(size.w * 0.5f, baseline, haloRadius, haloRadius);
 
         for (auto& vessel : vessels) {
             auto ship = vessel.ship;
@@ -1362,13 +1392,28 @@ struct ThorPirates : tvg::toolkit::App
             const float u = vessel.position;
             const float hitAge = time - vessel.hitStart;
             const float shake = (hitAge >= 0.0f && hitAge < 1.2f)
-                ? std::sin(hitAge * 32.0f) * std::exp(-hitAge * 4.0f) : 0.0f;
+                ? 2.4f * std::sin(hitAge * 32.0f) * std::exp(-hitAge * 4.0f) : 0.0f;
+            const float recoilAge = time - vessel.recoilStart;
+            const float recoil = (recoilAge >= 0.0f && recoilAge < 0.6f)
+                ? 3.5f * vessel.recoilDirection * std::sin(recoilAge * 28.0f) * std::exp(-recoilAge * 8.0f) : 0.0f;
             const auto water = sailingSurface(u, time);
-            const float angle = std::atan(size.h * water.slope / width) + shake * 0.15f;
+            const float targetAngle = std::atan(size.h * water.slope / width);
+            if (vessel.waterAngleTime < 0.0f) {
+                vessel.waterAngle = targetAngle;
+            } else {
+                const float dt = std::max(0.0f, time - vessel.waterAngleTime);
+                const float response = 1.0f - std::exp(-7.0f * dt);
+                const float change = (targetAngle - vessel.waterAngle) * response;
+                // Water drag smooths wave-following rotation; combat impulses stay separate.
+                const float maxChange = 0.90f * dt;
+                vessel.waterAngle += std::clamp(change, -maxChange, maxChange);
+            }
+            vessel.waterAngleTime = time;
+            const float angle = vessel.waterAngle + shake * 0.15f + recoil * 0.06f;
             const float scale = width * 0.10f / 180.0f;
             const float c = std::cos(angle) * scale;
             const float s = std::sin(angle) * scale;
-            ship->transform(Matrix{c, -s, width * u - c * 90.0f + s * shipWaterline + shake * width * 0.003f,
+            ship->transform(Matrix{c, -s, width * u - c * 90.0f + s * shipWaterline + shake * width * 0.003f + recoil * width * 0.0025f,
                 s, c, size.h * water.height - s * 90.0f - c * shipWaterline, 0.0f, 0.0f, 1.0f});
         }
     }
@@ -1411,7 +1456,7 @@ struct ThorPirates : tvg::toolkit::App
         const float radius = size.h * sunRadiusRatio;
         sun = Shape::gen();
         sun->appendCircle(size.w * 0.5f, y, radius, radius);
-        auto sunlight = LinearGradient::gen();
+        sunlight = LinearGradient::gen();
         sunlight->linear(0.0f, y - radius, 0.0f, y + radius);
         const Fill::ColorStop sunStops[] = {
             {0.0f, 255, 235, 170, 255},
@@ -1429,6 +1474,7 @@ struct ThorPirates : tvg::toolkit::App
         sunGlow = Shape::gen();
         sunGlow->appendCircle(size.w * 0.5f, y, glowRadius, glowRadius);
         auto glow = RadialGradient::gen();
+        sunGlowGradient = glow;
         glow->radial(size.w * 0.5f, y, glowRadius, size.w * 0.5f, y, 0.0f);
         const Fill::ColorStop glowStops[] = {
             {0.0f, 255, 225, 150, 150},
@@ -1597,6 +1643,7 @@ struct ThorPirates : tvg::toolkit::App
         reflectionLayer->blend(BlendMethod::Multiply);
         world->add(reflectionLayer);
 
+
         for (auto& drop : droplets) {
             drop.shape = Shape::gen();
             drop.shape->fill(255, 255, 255);
@@ -1626,6 +1673,16 @@ struct ThorPirates : tvg::toolkit::App
             Text::load(FONT_NAME, reinterpret_cast<const char*>(FONT_DATA), sizeof(FONT_DATA), "ttf");
             fontLoaded = true;
         }
+        reloadLabel = Text::gen();
+        reloadLabel->font(FONT_NAME);
+        reloadLabel->size(10.0f);
+        reloadLabel->text("reloading");
+        reloadLabel->fill(255, 240, 215);
+        reloadLabel->align(0.5f, 1.0f);
+        reloadLabel->translate(60.0f, -4.0f);
+        reloadLabel->opacity(0);
+        chargeGauge->add(reloadLabel);
+
         for (auto& popup : scorePopups) {
             popup.text = Text::gen();
             popup.text->font(FONT_NAME);
