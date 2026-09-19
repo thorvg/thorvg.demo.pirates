@@ -19,6 +19,14 @@ Sink enemy ships, dominate the battlefield, and prove yourself as the true ruler
 <br />
 <br />
 Powered entirely by ThorVG, this demo showcases real-time vector rendering, animation, and interactive gameplay on the high seas.<br />
+<br />
+<p align="center">
+  <img width="800" height="auto" alt="thorvg" src="https://github.com/user-attachments/assets/cda8e26e-acbc-44fb-9b16-4c50b3b991f6" />
+</p>
+
+<p align="center">
+  <strong><a href="https://youtu.be/eBvL9oUaQ3A?si=AKmsjYn25uMLLoFB">Watch the full video!</a></strong>
+</p>
 
 ## Build & Run
 Install Meson, Ninja, pkg-config, and a C++17 compiler, then install [ThorVG](https://github.com/thorvg/thorvg) and [ThorVG Toolkit](https://github.com/thorvg/thorvg.toolkit). The recommended ThorVG build option is
